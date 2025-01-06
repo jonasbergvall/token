@@ -70,10 +70,10 @@ st.title("TokenGate App")
 st.markdown("Check your wallet for supported tokens.")
 
 # Check RPC connection
-if web3.is_connected():
-    st.success("Connected to PulseChain")
-else:
+if not web3.is_connected():
     st.error("Failed to connect to PulseChain")
+else:
+    st.success("Connected to PulseChain")
 
 # MetaMask connection button
 st.markdown(
@@ -90,25 +90,19 @@ st.markdown(
 )
 
 # Extract wallet address from query parameters
-query_params = st.query_params
-wallet_address = query_params.get("public_key")
-
-# Debug: Show query parameters
-st.write("Query Params: ", query_params)
+wallet_address = st.query_params.get("public_key")
 
 # Handle wallet address
 if wallet_address:
     wallet_address = wallet_address[0] if isinstance(wallet_address, list) else wallet_address
-    st.write(f"Connected Wallet Address: {wallet_address}")
 
     # Validate wallet address
     if wallet_address.startswith("0x") and len(wallet_address) == 42:
         try:
             # Convert wallet address to checksum
             checksum_address = web3.to_checksum_address(wallet_address)
-            st.write(f"Checksum Wallet Address: {checksum_address}")
 
-            # Check each token in the wallet
+            detected_tokens = []
             for token_name, token_details in tokens.items():
                 try:
                     token_contract = web3.eth.contract(
@@ -116,24 +110,28 @@ if wallet_address:
                     )
                     raw_balance = token_contract.functions.balanceOf(checksum_address).call()
                     decimals = token_contract.functions.decimals().call()
-                    token_symbol = token_contract.functions.symbol().call()
 
                     # Convert balance to human-readable format
                     balance = raw_balance / (10 ** decimals)
 
-                    st.write(f"Token: {token_symbol}")
-                    st.write(f"Balance: {balance} {token_symbol}")
-                    st.markdown(f"[Learn more about {token_name}]({token_details['url']})")
-
                     if balance > 0:
-                        st.success(f"The wallet holds {balance} {token_symbol}.")
-                    else:
-                        st.warning(f"The wallet does not hold any {token_symbol} tokens.")
-                except Exception as e:
-                    st.error(f"Error fetching balance for {token_name}: {e}")
+                        detected_tokens.append(
+                            {"name": token_name, "url": token_details["url"], "balance": balance}
+                        )
+                except Exception:
+                    pass  # Ignore token errors to continue checking others
 
-        except Exception as e:
-            st.error(f"Error validating wallet address: {e}")
+            # Display detected tokens
+            if detected_tokens:
+                st.success("The wallet holds the following tokens:")
+                for token in detected_tokens:
+                    st.markdown(
+                        f"- **{token['name']}**: {token['balance']} [Learn more]({token['url']})"
+                    )
+            else:
+                st.warning("The wallet does not hold any supported tokens.")
+        except Exception:
+            st.error("Invalid wallet address.")
     else:
         st.warning("Invalid wallet address format.")
 else:
