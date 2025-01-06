@@ -95,7 +95,7 @@ if st.session_state.wallet_address is None:
 if st.session_state.wallet_address:
     if st.button("Disconnect Wallet"):
         st.session_state.wallet_address = None
-        st.experimental_set_query_params()  # Clear query params
+        st.query_params.clear()  # Clear query parameters
         st.success("Wallet disconnected.")
 
 # Show MetaMask authentication section if no wallet address is connected
