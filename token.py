@@ -41,44 +41,34 @@ if web3.is_connected():
 else:
     st.error("Failed to connect to PulseChain")
 
-# Embed MetaMask HTML and JavaScript using html()
-html(
-    """
+st.markdown("""
     <h1>MetaMask Authentication</h1>
     <button id="connectButton" style="padding: 10px 20px; background-color: #1f1f1f; color: white; border: none; border-radius: 5px; cursor: pointer;">
         Connect MetaMask
     </button>
     <script>
         async function connectMetaMask() {
-            console.log("Button clicked: connectMetaMask");
-
             if (typeof window.ethereum !== 'undefined') {
-                console.log("MetaMask detected.");
-
                 try {
                     const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
                     const publicKey = accounts[0];
-                    console.log("Retrieved Public Key:", publicKey);
 
                     // Redirect to Streamlit app with the public key
                     const baseUrl = window.location.origin;
                     const queryParams = new URLSearchParams({ public_key: publicKey });
                     window.location.href = `${baseUrl}?${queryParams.toString()}`;
                 } catch (error) {
-                    console.error("MetaMask connection failed:", error.message);
                     alert("Error connecting to MetaMask: " + error.message);
                 }
             } else {
-                console.log("MetaMask not detected.");
                 alert("MetaMask is not installed. Please install MetaMask to proceed.");
             }
         }
 
         document.getElementById('connectButton').addEventListener('click', connectMetaMask);
     </script>
-    """,
-    height=300,
-)
+""", unsafe_allow_html=True)
+
 
 # Extract wallet address from query parameters
 query_params = st.query_params
