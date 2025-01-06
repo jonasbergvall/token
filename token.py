@@ -6,71 +6,129 @@ pulsechain_rpc = "https://rpc.pulsechain.com"
 web3 = Web3(Web3.HTTPProvider(pulsechain_rpc))
 
 # Token contract details
-token_contract_address = "0xA55385633FFFab595E21880Ed7323cFD7D11Cd25"
-token_abi = [
-    {
-        "constant": True,
-        "inputs": [{"name": "_owner", "type": "address"}],
-        "name": "balanceOf",
-        "outputs": [{"name": "balance", "type": "uint256"}],
-        "type": "function",
+tokens = {
+    "TEED": {
+        "address": "0xA55385633FFFab595E21880Ed7323cFD7D11Cd25",
+        "name": "TEED",
+        "url": "https://drteed.substack.com/p/journal-of-dr-teed",
+        "abi": [
+            {
+                "constant": True,
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "type": "function",
+            },
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "decimals",
+                "outputs": [{"name": "", "type": "uint8"}],
+                "type": "function",
+            },
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "symbol",
+                "outputs": [{"name": "", "type": "string"}],
+                "type": "function",
+            },
+        ],
     },
-    {
-        "constant": True,
-        "inputs": [],
-        "name": "decimals",
-        "outputs": [{"name": "", "type": "uint8"}],
-        "type": "function",
+    "WUPIUPU": {
+        "address": "0x12B3E0d79c5dFda3FfA55D57C9697bD509dBf7B0",
+        "name": "WUPIUPU",
+        "url": "https://mrlefthouse.pls.fyi/",
+        "abi": [
+            {
+                "constant": True,
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "type": "function",
+            },
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "decimals",
+                "outputs": [{"name": "", "type": "uint8"}],
+                "type": "function",
+            },
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "symbol",
+                "outputs": [{"name": "", "type": "string"}],
+                "type": "function",
+            },
+        ],
     },
-    {
-        "constant": True,
-        "inputs": [],
-        "name": "symbol",
-        "outputs": [{"name": "", "type": "string"}],
-        "type": "function",
-    },
-]
+}
 
-# Initialize the token contract
-token_contract = web3.eth.contract(address=token_contract_address, abi=token_abi)
+# Initialize Streamlit app
+st.title("TokenGate App")
+st.markdown("Check your wallet for supported tokens.")
 
-# Prompt the user to connect MetaMask
-st.markdown(
-    """
-    <h1>Connect MetaMask</h1>
-    <a href="https://bestofworlds.se/web3/" target="_blank" style="padding: 10px 20px; background-color: #1f1f1f; color: white; text-decoration: none; border-radius: 5px;">
-        Connect MetaMask
-    </a>
-    """,
-    unsafe_allow_html=True,
-)
+# Check RPC connection
+if web3.is_connected():
+    st.success("Connected to PulseChain")
+else:
+    st.error("Failed to connect to PulseChain")
 
 # Extract wallet address from query parameters
-query_params = st.experimental_get_query_params()
-wallet_address = query_params.get("wallet_address")
+query_params = st.query_params
+wallet_address = query_params.get("public_key")
 
-if wallet_address:
-    wallet_address = wallet_address[0]  # Handle case where it's a list
+# Ensure the wallet_address is properly extracted
+if isinstance(wallet_address, list):  # Handle list case
+    wallet_address = wallet_address[0]
+
+# Validate wallet address
+if wallet_address and wallet_address.startswith("0x") and len(wallet_address) == 42:
     try:
         # Convert wallet address to checksum
         checksum_address = web3.to_checksum_address(wallet_address)
         st.write(f"Checksum Wallet Address: {checksum_address}")
 
-        # Fetch token balance
-        raw_balance = token_contract.functions.balanceOf(checksum_address).call()
-        decimals = token_contract.functions.decimals().call()
-        token_symbol = token_contract.functions.symbol().call()
+        # Check each token in the wallet
+        for token_name, token_details in tokens.items():
+            try:
+                token_contract = web3.eth.contract(
+                    address=token_details["address"], abi=token_details["abi"]
+                )
+                raw_balance = token_contract.functions.balanceOf(checksum_address).call()
+                decimals = token_contract.functions.decimals().call()
+                token_symbol = token_contract.functions.symbol().call()
 
-        # Convert balance to human-readable format
-        balance = raw_balance / (10 ** decimals)
-        st.write(f"Token: {token_symbol}")
-        st.write(f"Balance: {balance} {token_symbol}")
+                # Convert balance to human-readable format
+                balance = raw_balance / (10 ** decimals)
 
-        if balance > 0:
-            st.success(f"The wallet holds {balance} {token_symbol}.")
-        else:
-            st.warning(f"The wallet does not hold any {token_symbol} tokens.")
+                st.write(f"Token: {token_symbol}")
+                st.write(f"Balance: {balance} {token_symbol}")
+                st.markdown(f"[Learn more about {token_name}]({token_details['url']})")
+
+                if balance > 0:
+                    st.success(f"The wallet holds {balance} {token_symbol}.")
+                else:
+                    st.warning(f"The wallet does not hold any {token_symbol} tokens.")
+            except Exception as e:
+                st.error(f"Error fetching balance for {token_name}: {e}")
+
     except Exception as e:
-        st.error(f"Error fetching token balance: {e}")
+        st.error(f"Error validating wallet address: {e}")
 else:
     st.warning("Please connect MetaMask and refresh the page.")
+
+# Display MetaMask connection instructions
+st.markdown(
+    """
+    <h1>MetaMask Authentication</h1>
+    <p>Click the button below to connect your MetaMask wallet:</p>
+    <a href="https://bestofworlds.se/web3/" target="_blank">
+        <button style="padding: 10px 20px; background-color: #1f1f1f; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Connect MetaMask
+        </button>
+    </a>
+    """,
+    unsafe_allow_html=True,
+)
