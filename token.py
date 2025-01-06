@@ -75,27 +75,26 @@ if not web3.is_connected():
 else:
     st.success("Connected to PulseChain")
 
-# MetaMask connection button
-st.markdown(
-    """
-    <h1>MetaMask Authentication</h1>
-    <p>Click the button below to connect your MetaMask wallet:</p>
-    <a href="https://bestofworlds.se/web3/" target="_blank">
-        <button style="padding: 10px 20px; background-color: #1f1f1f; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            Connect MetaMask
-        </button>
-    </a>
-    """,
-    unsafe_allow_html=True,
-)
-
 # Extract wallet address from query parameters
 wallet_address = st.query_params.get("public_key")
-
-# Handle wallet address
 if wallet_address:
     wallet_address = wallet_address[0] if isinstance(wallet_address, list) else wallet_address
 
+# Only show MetaMask authentication section if no wallet address is detected
+if not wallet_address:
+    st.markdown(
+        """
+        <h1>MetaMask Authentication</h1>
+        <p>Click the button below to connect your MetaMask wallet:</p>
+        <a href="https://bestofworlds.se/web3/" target="_blank">
+            <button style="padding: 10px 20px; background-color: #1f1f1f; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Connect MetaMask
+            </button>
+        </a>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
     # Validate wallet address
     if wallet_address.startswith("0x") and len(wallet_address) == 42:
         try:
@@ -134,5 +133,3 @@ if wallet_address:
             st.error("Invalid wallet address.")
     else:
         st.warning("Invalid wallet address format.")
-else:
-    st.warning("Connect your MetaMask wallet to proceed.")
