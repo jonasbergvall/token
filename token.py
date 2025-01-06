@@ -69,12 +69,6 @@ tokens = {
 st.title("TokenGate App")
 st.markdown("Check your wallet for supported tokens.")
 
-# Check RPC connection
-if web3.is_connected():
-    st.success("Connected to PulseChain RPC")
-else:
-    st.error("Failed to connect to PulseChain RPC")
-
 # Session state to manage wallet address
 if "wallet_address" not in st.session_state:
     st.session_state.wallet_address = None
