@@ -75,13 +75,31 @@ if not web3.is_connected():
 else:
     st.success("Connected to PulseChain")
 
-# Extract wallet address from query parameters
-wallet_address = st.query_params.get("public_key")
-if wallet_address:
-    wallet_address = wallet_address[0] if isinstance(wallet_address, list) else wallet_address
+# Session state to manage wallet address
+if "wallet_address" not in st.session_state:
+    st.session_state.wallet_address = None
 
-# Only show MetaMask authentication section if no wallet address is detected
-if not wallet_address:
+# Handle MetaMask connection and disconnection
+if "disconnect" not in st.session_state:
+    st.session_state.disconnect = False
+
+# Extract wallet address from query parameters if not in session state
+if st.session_state.wallet_address is None:
+    wallet_address = st.query_params.get("public_key")
+    if wallet_address:
+        wallet_address = wallet_address[0] if isinstance(wallet_address, list) else wallet_address
+        if wallet_address.startswith("0x") and len(wallet_address) == 42:
+            st.session_state.wallet_address = wallet_address
+
+# Disconnect button
+if st.session_state.wallet_address:
+    if st.button("Disconnect Wallet"):
+        st.session_state.wallet_address = None
+        st.experimental_set_query_params()  # Clear query params
+        st.success("Wallet disconnected.")
+
+# Show MetaMask authentication section if no wallet address is connected
+if not st.session_state.wallet_address:
     st.markdown(
         """
         <h1>MetaMask Authentication</h1>
@@ -96,40 +114,37 @@ if not wallet_address:
     )
 else:
     # Validate wallet address
-    if wallet_address.startswith("0x") and len(wallet_address) == 42:
-        try:
-            # Convert wallet address to checksum
-            checksum_address = web3.to_checksum_address(wallet_address)
+    wallet_address = st.session_state.wallet_address
+    try:
+        checksum_address = web3.to_checksum_address(wallet_address)
 
-            detected_tokens = []
-            for token_name, token_details in tokens.items():
-                try:
-                    token_contract = web3.eth.contract(
-                        address=token_details["address"], abi=token_details["abi"]
+        detected_tokens = []
+        for token_name, token_details in tokens.items():
+            try:
+                token_contract = web3.eth.contract(
+                    address=token_details["address"], abi=token_details["abi"]
+                )
+                raw_balance = token_contract.functions.balanceOf(checksum_address).call()
+                decimals = token_contract.functions.decimals().call()
+
+                # Convert balance to human-readable format
+                balance = raw_balance / (10 ** decimals)
+
+                if balance > 0:
+                    detected_tokens.append(
+                        {"name": token_name, "url": token_details["url"], "balance": balance}
                     )
-                    raw_balance = token_contract.functions.balanceOf(checksum_address).call()
-                    decimals = token_contract.functions.decimals().call()
+            except Exception:
+                pass  # Ignore token errors to continue checking others
 
-                    # Convert balance to human-readable format
-                    balance = raw_balance / (10 ** decimals)
-
-                    if balance > 0:
-                        detected_tokens.append(
-                            {"name": token_name, "url": token_details["url"], "balance": balance}
-                        )
-                except Exception:
-                    pass  # Ignore token errors to continue checking others
-
-            # Display detected tokens
-            if detected_tokens:
-                st.success("The wallet holds the following tokens:")
-                for token in detected_tokens:
-                    st.markdown(
-                        f"- **{token['name']}**: {token['balance']} [Learn more]({token['url']})"
-                    )
-            else:
-                st.warning("The wallet does not hold any supported tokens.")
-        except Exception:
-            st.error("Invalid wallet address.")
-    else:
-        st.warning("Invalid wallet address format.")
+        # Display detected tokens
+        if detected_tokens:
+            st.success("The wallet holds the following tokens:")
+            for token in detected_tokens:
+                st.markdown(
+                    f"- **{token['name']}**: {token['balance']} [Learn more]({token['url']})"
+                )
+        else:
+            st.warning("The wallet does not hold any supported tokens.")
+    except Exception as e:
+        st.error(f"Error validating wallet: {e}")
