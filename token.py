@@ -70,18 +70,14 @@ st.title("TokenGate App")
 st.markdown("Check your wallet for supported tokens.")
 
 # Check RPC connection
-if not web3.is_connected():
-    st.error("Failed to connect to PulseChain")
+if web3.is_connected():
+    st.success("Connected to PulseChain RPC")
 else:
-    st.success("Connected to PulseChain")
+    st.error("Failed to connect to PulseChain RPC")
 
 # Session state to manage wallet address
 if "wallet_address" not in st.session_state:
     st.session_state.wallet_address = None
-
-# Handle MetaMask connection and disconnection
-if "disconnect" not in st.session_state:
-    st.session_state.disconnect = False
 
 # Extract wallet address from query parameters if not in session state
 if st.session_state.wallet_address is None:
@@ -91,15 +87,16 @@ if st.session_state.wallet_address is None:
         if wallet_address.startswith("0x") and len(wallet_address) == 42:
             st.session_state.wallet_address = wallet_address
 
-# Disconnect button
+# Handle MetaMask connection and wallet status
 if st.session_state.wallet_address:
+    st.success(f"Wallet connected: {st.session_state.wallet_address}")
+    # Disconnect button
     if st.button("Disconnect Wallet"):
         st.session_state.wallet_address = None
         st.query_params.clear()  # Clear query parameters
         st.success("Wallet disconnected.")
-
-# Show MetaMask authentication section if no wallet address is connected
-if not st.session_state.wallet_address:
+else:
+    st.warning("No wallet connected. Please connect your wallet to proceed.")
     st.markdown(
         """
         <h1>MetaMask Authentication</h1>
@@ -112,8 +109,9 @@ if not st.session_state.wallet_address:
         """,
         unsafe_allow_html=True,
     )
-else:
-    # Validate wallet address
+
+# Display token details if wallet is connected
+if st.session_state.wallet_address:
     wallet_address = st.session_state.wallet_address
     try:
         checksum_address = web3.to_checksum_address(wallet_address)
