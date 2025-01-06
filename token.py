@@ -69,19 +69,23 @@ tokens = {
 st.title("TokenGate App")
 st.markdown("Check your wallet for supported tokens.")
 
-# Check RPC connection
+# Debug: Check RPC connection
 if web3.is_connected():
     st.success("Connected to PulseChain")
 else:
     st.error("Failed to connect to PulseChain")
 
-# Extract wallet address from query parameters
-query_params = st.query_params
-wallet_address = query_params.get("public_key")
+# Extract and debug wallet address from query parameters
+st.write("Query Params: ", st.query_params)
+wallet_address = st.query_params.get("public_key")
+st.write("Raw Wallet Address: ", wallet_address)
 
 # Ensure the wallet_address is properly extracted
 if isinstance(wallet_address, list):  # Handle list case
     wallet_address = wallet_address[0]
+
+if wallet_address:
+    st.write("Final Wallet Address: ", wallet_address)
 
 # Validate wallet address
 if wallet_address and wallet_address.startswith("0x") and len(wallet_address) == 42:
@@ -100,6 +104,9 @@ if wallet_address and wallet_address.startswith("0x") and len(wallet_address) ==
                 decimals = token_contract.functions.decimals().call()
                 token_symbol = token_contract.functions.symbol().call()
 
+                # Debug: Raw balance
+                st.write(f"Raw balance for {token_name}: {raw_balance}")
+
                 # Convert balance to human-readable format
                 balance = raw_balance / (10 ** decimals)
 
@@ -112,23 +119,9 @@ if wallet_address and wallet_address.startswith("0x") and len(wallet_address) ==
                 else:
                     st.warning(f"The wallet does not hold any {token_symbol} tokens.")
             except Exception as e:
-                st.error(f"Error fetching balance for {token_name}: {e}")
+                st.error(f"Error fetching balance for {token_name}: {str(e)}")
 
     except Exception as e:
         st.error(f"Error validating wallet address: {e}")
 else:
     st.warning("Please connect MetaMask and refresh the page.")
-
-# Display MetaMask connection instructions
-st.markdown(
-    """
-    <h1>MetaMask Authentication</h1>
-    <p>Click the button below to connect your MetaMask wallet:</p>
-    <a href="https://bestofworlds.se/web3/" target="_blank">
-        <button style="padding: 10px 20px; background-color: #1f1f1f; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            Connect MetaMask
-        </button>
-    </a>
-    """,
-    unsafe_allow_html=True,
-)
